@@ -1,8 +1,8 @@
-import User from "../models/User,.js"
+import User from "../models/User.js"
 import jwt from "jsonwebtoken"
 
+//SignUp method
 export async function signup(req,res){
-    res.send("signup route");
 
     const {email, password, fullName}=req.body;
 
@@ -33,7 +33,7 @@ export async function signup(req,res){
 
         const randomAvatar=`https://avatar.iran.liara.run/public/${idx}.png`;
 
-        const newUser=new User.create({
+        const newUser=await User.create({
             email,
             password,
             fullName,
@@ -67,10 +67,49 @@ export async function signup(req,res){
     }
 }
 
-export function login(req,res){
-    res.send("login route");
+
+//Login method
+export async function login(req,res){
+
+    try {
+        const {email, password}=req.body;
+
+        if(!email || !password)
+            return res.status(400).json({message: "All fields required"})
+
+        const user=await User.findOne({email});
+
+        if(!user){
+            return res.status(401).json({message: "email or password invalid"});
+        }
+
+        const isPasswordCorrect= await user.matchPassword(password);
+        if(!isPasswordCorrect){
+            return res.status(401).json({message: "invalid email or password"});
+        }
+
+        //sending back jwt after login
+        const token=jwt.sign({userId:user._id}, process.env.JWT_SECRET_KEY, { expiresIn: "7d"});
+
+        res.cookie("jwt", token,{
+            maxAge: 7*24*60*60*1000,
+            httpOnly:true,
+            sameSite:"strict",
+            secure: process.env.NODE_ENV=="production"
+        });
+
+        res.status(200).json({success: true, user});
+        
+    } catch (error) {
+        console.log("error in login controller", error.message);
+        res.status(500).json({message: "internal server error"}) 
+    }
 }
 
+
+//Logout function
 export function logout(req,res){
-    res.send("logout route");
+    res.clearCookie("jwt");
+    res.status(200).json({success :true, message: "logout successful"});
 }
+
