@@ -126,3 +126,61 @@ export function logout(req,res){
     res.status(200).json({success :true, message: "logout successful"});
 }
 
+
+
+//Onboarding function 
+export  async function onboard(req,res){
+    //in this function we can access the user which we found from the database using the middleware as well as the other data fields such as fullname, nativeLanguage, laerningLang etc. which the user enters on the onboarding page
+
+    try {
+        const userId=req.user._id;
+
+        const {fullName, learningLanguage, nativeLanguage, location, bio}= req.body;
+
+        if(!fullName || !learningLanguage || !nativeLanguage || !location || !bio){
+            return res.status(400).json({
+                message:"All fields are required",
+                missingFields:[
+                    !fullName && "fullName",
+                    !learningLanguage && "learningLanguage",
+                    !nativeLanguage && "nativeLanguage",
+                    !location && "Location",
+                    !bio && "bio"
+                ].filter(Boolean)
+            });
+        }
+
+        const updatedUser= await User.findByIdAndUpdate(userId,{
+            ...req.body,
+            isOnboarded: true,
+        },
+        {
+            new: true
+        });
+
+        if(!updatedUser) return res.status(404).json({message:"User not found"});
+
+
+        // update user info in STREAM
+
+        try{
+            await upsertStreamUser({
+                id:updatedUser._id.toString(),
+                name:updatedUser.fullName,
+                image:updatedUser.profilePic || "",
+            })
+            console.log(`Stream user updated after onboarding for ${updatedUser.fullName}`);
+        }
+        catch(streamError){
+            console.log("error updating stream user during onbarding", error);
+        }
+
+        res.status(200).json({success:true, user: updatedUser});
+
+
+    } catch (error) {
+        console.log("Onboarding error", error);
+        res.status(500).json({message:"Internal Server error"});
+    }
+
+}
