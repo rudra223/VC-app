@@ -172,7 +172,7 @@ export  async function onboard(req,res){
             console.log(`Stream user updated after onboarding for ${updatedUser.fullName}`);
         }
         catch(streamError){
-            console.log("error updating stream user during onbarding", error);
+            console.log("error updating stream user during onbarding", streamError);
         }
 
         res.status(200).json({success:true, user: updatedUser});
